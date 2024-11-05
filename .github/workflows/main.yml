@@ -1,0 +1,158 @@
+on: [push]
+
+jobs:
+
+  tests:
+    name: Running pytest
+    environment: TESTING
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+    - 
+      uses: actions/checkout@v4
+    - 
+      name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    -
+      name: Install dump-env and create .env
+      env:
+        VARS_PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+        VARS_ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+        VARS_HTTP_SECURED: ${{ vars.HTTP_SECURED}}
+        VARS_HTTP_PORT: ${{ vars.HTTP_PORT }}
+        VARS_V1: ${{ vars.V1 }}
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install dump-env==1.5.0
+        dump-env --template=.env.template --prefix='SECRET_' > \
+          .testing.env
+    - 
+      name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    - 
+      name: Setup Debug Session
+      uses: csexton/debugger-action@master
+    -
+      name: Tests with pytest
+      run: |
+        pytest
+
+#   build_and_push_to_docker_hub:
+#     name: Build and push Docker image to Docker Hub
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/main'
+#     steps:
+#       -
+#         name: Check out the repo
+#         uses: actions/checkout@v4
+#       -
+#         name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+#       -
+#         name: Login to Docker
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{ secrets.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+#       -
+#         name: Push to Docker Hub
+#         uses: docker/build-push-action@v3
+#         with:
+#           context: .
+#           file: ./dockerfiles/${{ secrets.PROJECT_NAME }}/Dockerfile
+#           push: true
+#           tags: sorochinskii/${{ secrets.PROJECT_NAME }}:latest
+
+#   deploy:
+#     name: Deploy
+#     runs-on: ubuntu-latest
+#     if: ${{ github.ref == 'refs/heads/main' }}
+#     needs: build_and_push_to_docker_hub
+
+#     steps:
+#       -
+#         uses: actions/checkout@v4
+#       -
+#         name: Set up Python
+#         uses: actions/setup-python@v2
+#         with:
+#             python-version: 3.11
+#       - 
+#         name: Set ENVIRONMENT to testing env
+#         run: |
+#           echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+#       -
+#         name: Install dump-env and create .env
+#         env:
+#           SECRET_DB_NAME: ${{ secrets.DB_NAME }}
+#           SECRET_POSTGRES_USER: ${{ secrets.DB_USER }}
+#           SECRET_POSTGRES_PASSWORD: ${{ secrets.DB_PASS }}
+#           SECRET_DB_HOST: ${{ secrets.DB_HOST }}
+#           SECRET_DB_PORT: ${{ secrets.DB_PORT }}
+#           SECRET_DB_PASS: ${{ secrets.DB_PASS }}
+#           SECRET_DB_USER: ${{ secrets.DB_USER }}
+#           SECRET_PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+#           SECRET_ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
+#           SECRET_SECRET: ${{ secrets.SECRET}}
+#           SECRET_TOKEN_LIFETIME: ${{ secrets.TOKEN_LIFETIME}}
+#           SECRET_TEMPLATES_DIR: ${{ secrets.TEMPLATES_DIR}}
+#           SECRET_TEMPLATE_VERIFICATION: ${{ secrets.TEMPLATE_VERIFICATION}}
+#           SECRET_HTTP_PORT: ${{ secrets.HTTP_PORT }}
+#           SECRET_V1: ${{ secrets.V1 }}
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install dump-env==1.3.0
+#           dump-env --template=.env.template --prefix='SECRET_' > \
+#             .env
+#       -
+#         name: Copy file via ssh
+#         uses: appleboy/scp-action@master
+#         with:
+#           host: ${{ secrets.HOST }}
+#           username: ${{ secrets.SSH_USER }}
+#           key: ${{ secrets.SSH_KEY }}
+#           port: ${{ secrets.SSH_PORT }}
+#           passphrase: ${{ secrets.SSH_PASSPHRASE }}
+#           source: "
+#             dockerfiles,
+#             docker-compose.yml,
+#             docker-compose.prod.yml,
+#             docker-compose.common.yml,
+#             .env"
+#           target: code
+#       -
+#         name: Executing docker compose and viola
+#         uses: appleboy/ssh-action@master
+#         with:
+#           host: ${{ secrets.HOST }}
+#           username: ${{ secrets.SSH_USER }}
+#           key: ${{ secrets.SSH_KEY }}
+#           port: ${{ secrets.SSH_PORT }}
+#           passphrase: ${{ secrets.SSH_PASSPHRASE }}
+#           script: |
+#             export ENVIRONMENT=${{ env.ENVIRONMENT }}
+#             cd ~/code
+#             ls -laht
+#             docker compose down
+#             docker rmi sorochinskii/${{ secrets.PROJECT_NAME }} -f
+#             docker compose up -d
+
+#   check_http_status:
+#     name: Check service status
+#     runs-on: ubuntu-latest
+#     needs: deploy
+#     steps:
+#     - name: Sleep before http check
+#       uses: jakejarvis/wait-action@master
+#       with:
+#         time: '10s'
+#     - name: Check http status code of production site
+#       uses: lakuapik/gh-actions-http-status@v1
+#       with:
+#         sites: '["https://catalog3.pikab00.ru/openapi.json"]'
+#         expected: '[200]'
