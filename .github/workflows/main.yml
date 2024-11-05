@@ -29,7 +29,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install dump-env==1.5.0
         dump-env --template=.env.template --prefix='VARS_' \
-        --prefix='SECRET_' > .testing.env
+        --prefix='SECRET_' > .env
     - 
       name: Install dependencies
       run: |
