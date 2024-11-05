@@ -18,10 +18,9 @@ class Settings(BaseSettings):
     SSH_PASSPHRASE: str = Field(default='SSH_PASSPHRASE')
     SSH_PORT: str = Field(default='SSH_PORT')
     PROJECT_NAME: str = Field(default='PROJECT_NAME')
-    ENVIRONMENT: str = Field(default='ENVIRONMENT')
     LOG_DIR: str = Field(default='LOG_DIR')
     V1: str = Field(default='V1')
-    HTTP_SECURED: str = Field(default='HTTP_SECURED')
+    HTTP_SECURE: str = Field(default='HTTP_SECURE')
     HTTP_PORT: int | None = Field(default=None)
 
     # @model_validator(mode='after')
